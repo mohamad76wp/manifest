@@ -1,5 +1,9 @@
 clone okex-api-v5 from "https://github.com/coinrising/okex-api-v5"
 
-# Telethon==1.24.0
+#  Telethon==1.24.0
 
-pip install git+https://github.com/kshubham506/Telethon.git
+# pip install git+https://github.com/kshubham506/Telethon.git
+
+Pyrogram==2.0.19
+
+TgCrypto==1.2.3
