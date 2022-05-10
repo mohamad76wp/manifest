@@ -1,11 +1,6 @@
-from pydoc import resolve
-from textwrap import indent
-from turtle import pos
+import re
 from urllib import response
 import requests
-import base64
-import json
-import datetime
 import okexApi.okex.Trade_api as Trade
 import secrets
 
@@ -27,20 +22,29 @@ get_inst_price = requests.get("http://www.okex.com/api/v5/market/ticker?instId="
 respon_lp = get_inst_price.json()["data"][0]["last"]
 
 print(respon_lp)
-print("\n")
-lp_int_tp = float(respon_lp) + 80
-lp_int_sl = float(respon_lp) - 80
 
-place_pos = tradeAPI.place_order(instId=instrument, tdMode='isolated',posSide="long" ,side='buy',ordType='market', sz=1)
-print(place_pos)
 
-# get_pos_list = tradeAPI.get_orders(instrument,place_pos["data"][0]["ordId"])
-# print(get_pos_list)
+class Manifest:
+    def __init__(self,api, secret, password, flag) :
+        self.tradeAPI = Trade.TradeAPI(api, secret, password, False, flag)
 
-place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="sell",posSide="long", ordType="oco", sz="1" , tpTriggerPx = lp_int_tp  ,tpOrdPx = "-1", slTriggerPx = lp_int_sl  ,slOrdPx = "-1")
-print(place_algo_order)
+    def pos_long(self, instrument, Secure_TP, StopLoss):
+        place_pos = self.tradeAPI.place_order(instId=instrument, tdMode="isolated", posSide="long", side="buy", ordType='market', sz=1)
+        place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="sell",posSide="long", ordType="oco", sz="1" , tpTriggerPx = Secure_TP  ,tpOrdPx = "-1", slTriggerPx = StopLoss  ,slOrdPx = "-1")
+        return {"place_pos":place_pos,"place_algo_order":place_algo_order}
+        
+    def pos_short(self, instrument, Secure_TP, StopLoss):
+        place_pos = self.tradeAPI.place_order(instId=instrument, tdMode="isolated", posSide="short", side="sell", ordType='market', sz=1)
+        place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="buy", posSide="short", ordType="oco", sz="1" , tpTriggerPx = Secure_TP  ,tpOrdPx = "-1", slTriggerPx = StopLoss  ,slOrdPx = "-1")
+        return {"place_pos":place_pos,"place_algo_order":place_algo_order}
 
-stop = timeit.default_timer()
+make_trade = Manifest(api,secret,password,flag)
 
-print('Time: ', stop - start)
+x = input("long or short?")
 
+if x == "long":
+    open_long_pos = make_trade.pos_long("BTC-USDT-SWAP",float(respon_lp) + 80,float(respon_lp) - 80)
+    print(open_long_pos)
+elif x == "short":
+    open_short_pos = make_trade.pos_short("BTC-USDT-SWAP",float(respon_lp) - 80,float(respon_lp) + 80)
+    print(open_short_pos)
