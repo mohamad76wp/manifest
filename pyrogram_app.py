@@ -1,9 +1,9 @@
-from turtle import up
 from pyrogram import Client
 import configparser
 import re
+from okex_requests import send_pos
 
-chat_id = "@dr_lectter"
+chat_id = "@mehraniacalgo"
 
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -19,12 +19,11 @@ username = config['Telegram']['username']
 
 app = Client("my_account", api_id=api_id, api_hash=api_hash)
 
-
+print("Waiting")
 @app.on_raw_update()
 async def raw(client, update, users, chats):
     try:
         message = update.message.message
-
         test_char =  "💹 Trading Setup:"
         if test_char in message:
             price_dict = dict()
@@ -43,9 +42,12 @@ async def raw(client, update, users, chats):
                 temp = item.split(":")
                 price_dict[temp[0]] = temp[1].strip()
             print(price_dict)
+            make_position = send_pos(price_dict["side"],"1",price_dict["Secure TP"], price_dict["SL"])
+            print(f"result: {make_position}")
         else:
             print("Ops !")
 
     except AttributeError as e:
-        print(f"Some Error !!!: {e}")
+        # print(f"Some Error !!!: {e}")
+        pass
 app.run() 
