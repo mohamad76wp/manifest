@@ -17,7 +17,7 @@ api_hash = str(api_hash)
 phone = config['Telegram']['phone']
 username = config['Telegram']['username']
 
-app = Client("my_account", api_id=api_id, api_hash=api_hash)
+app = Client(chat_id, api_id=api_id, api_hash=api_hash)
 
 print("Waiting")
 @app.on_raw_update()
@@ -42,7 +42,8 @@ async def raw(client, update, users, chats):
                 temp = item.split(":")
                 price_dict[temp[0]] = temp[1].strip()
             print(price_dict)
-            make_position = send_pos(price_dict["side"],"1",price_dict["Secure TP"], price_dict["SL"])
+            
+            make_position = send_pos(price_dict["side"], "1", price_dict["Secure TP"], price_dict["SL"])
             print(f"result: {make_position}")
         else:
             print("Ops !")
