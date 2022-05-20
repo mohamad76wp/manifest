@@ -24,7 +24,7 @@ start = timeit.default_timer()
 # print(respon_lp)
 
 
-class Manifest:
+class Manifest_oco:
     print("log 1")
     def __init__(self,api, secret, password, flag) :
         self.tradeAPI = Trade.TradeAPI(api, secret, password, False, flag)
@@ -39,13 +39,13 @@ class Manifest:
         place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="buy", posSide="short", ordType="oco", sz="3", tpTriggerPx = Secure_TP, tpOrdPx = "-1", slTriggerPx = StopLoss, slOrdPx = "-1")
         return {"place_pos":place_pos,"place_algo_order":place_algo_order}
 
-make_trade = Manifest(api,secret,password,flag)
+make_oco_trade = Manifest_oco(api,secret,password,flag)
 
-def send_pos(side, size,secure_tp,stop_loss):
+def send_oco_pos(side, size,secure_tp,stop_loss):
 
     if side == "long":
-        open_long_pos = make_trade.pos_long("BTC-USDT-SWAP", secure_tp, stop_loss)
+        open_long_pos = make_oco_trade.pos_long("BTC-USDT-SWAP", secure_tp, stop_loss)
         return open_long_pos
     elif side == "short":
-        open_short_pos = make_trade.pos_short("BTC-USDT-SWAP", secure_tp, stop_loss)
+        open_short_pos = make_oco_trade.pos_short("BTC-USDT-SWAP", secure_tp, stop_loss)
         return open_short_pos
