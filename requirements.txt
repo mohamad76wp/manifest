@@ -1,7 +1,6 @@
-clone okex-api-v5 from "https://github.com/coinrising/okex-api-v5"
+clone okex-api-v5 from "https://github.com/coinrising/okex-api-v5" # in Trading Api file >> place aglo order added  "tag" parameter by mohamad hosein
 
-git clone https://github.com/jane-cloud/Open-API-SDK-V5.git # for using trailing stop [just copy the 'okx' dir from 'Open-API-SDK-V5/okx-python-sdk-api-v5' ]
-
+# git clone https://github.com/jane-cloud/Open-API-SDK-V5.git # for using trailing stop [just copy the 'okx' dir from 'Open-API-SDK-V5/okx-python-sdk-api-v5' ]
 
 #  Telethon==1.24.0
 
