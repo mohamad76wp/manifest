@@ -39,7 +39,7 @@ def tagMaker(Secure_TP,Max_tp):
     return tag
 
 
-class Manifest_oco:
+class Manifest_conditional:
     print("log 1")
     def __init__(self,api, secret, password, flag) :
         self.tradeAPI = Trade.TradeAPI(api, secret, password, False, flag)
@@ -62,13 +62,13 @@ class Manifest_oco:
         place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="buy", posSide="short", ordType="conditional", sz="3", slTriggerPx = StopLoss, slOrdPx = "-1", tag=tag)
         return {"place_pos":place_pos,"place_algo_order":place_algo_order}
 
-make_oco_trade = Manifest_oco(api,secret,password,flag)
+make_conditional_trade = Manifest_conditional(api,secret,password,flag)
 
-def send_oco_pos(side, size,secure_tp,stop_loss,max_tp):
+def place_conditional_pos(side, size,secure_tp,stop_loss,max_tp):
 
     if side == "long":
-        open_long_pos = make_oco_trade.pos_long("BTC-USDT-SWAP", secure_tp, stop_loss, max_tp)
+        open_long_pos = make_conditional_trade.pos_long("BTC-USDT-SWAP", secure_tp, stop_loss, max_tp)
         return open_long_pos
     elif side == "short":
-        open_short_pos = make_oco_trade.pos_short("BTC-USDT-SWAP", secure_tp, stop_loss, max_tp)
+        open_short_pos = make_conditional_trade.pos_short("BTC-USDT-SWAP", secure_tp, stop_loss, max_tp)
         return open_short_pos

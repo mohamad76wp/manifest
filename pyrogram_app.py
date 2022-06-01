@@ -1,7 +1,7 @@
 from pyrogram import Client
 import configparser
 import re
-from okex_requests import send_oco_pos
+from okex_requests import place_conditional_pos
 
 chat_id = "@mehraniacalgo"
 
@@ -43,7 +43,7 @@ async def raw(client, update, users, chats):
                 price_dict[temp[0]] = temp[1].strip()
             print(price_dict)
             
-            make_position = send_oco_pos(price_dict["side"], "1", price_dict["Secure TP"], price_dict["SL"],price_dict["Max TP"])
+            make_position = place_conditional_pos(price_dict["side"], "1", price_dict["Secure TP"], price_dict["SL"],price_dict["Max TP"])
             print(f"result: {make_position}")
         else:
             print("Ops !")
