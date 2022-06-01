@@ -1,5 +1,6 @@
 
 import time
+from urllib import response
 import okx.Trade_api as Trade
 import okx.Market_api as Market
 
@@ -27,48 +28,61 @@ def Get_ticker_price(instrument): # Get last price form order book
 
 def Get_algo_order_list(): # Returns a list of pending algo orders 
     get_algo_pending = tradeAPI.order_algos_list("conditional",instType="SWAP")
-    algo_ord_list = get_algo_pending["data"]
-
-    if len(algo_ord_list) != 0:
-        return algo_ord_list
-    else:
-        return "[algo order list is empty!]"
+    response_code = int(get_algo_pending["code"])
+    if response_code == 0:
+        return get_algo_pending["data"]
+    else: 
+        return get_algo_pending
 
 
 def Trailing_calc(algo_order,last_px):
-    slTriggerPx = algo_order["slTriggerPx"]
-    posSide = algo_order["posSide"]
-    tag = algo_order["tag"]
-    secure_TP = float(algo_order["tag"][:8].replace("x","."))
-    Max_tp = float(algo_order["tag"][8:].replace("x","."))
+    
+    output_dict = dict()
+    try:
+        secure_TP = float(algo_order["tag"][:8].replace("x","."))
+        Max_tp = float(algo_order["tag"][8:].replace("x","."))
 
-    mxTP_scTP = ((Max_tp - secure_TP)*40)/100
-    safe_level = Max_tp - mxTP_scTP
-    margin = ((last_px - safe_level)/last_px)*100
-    margin = "{:.2f}".format(margin)
-    print(f"safe_level: {safe_level}")
-    print(f"tag:{posSide}--{tag}")
-    print(f"margin(sfelvl): {margin}")
-
-    # compare is the market price is in safe level for trailing the stop loss
-    if posSide == "long": # Long side checking
-        if last_px >= safe_level:
-            slTriggerPx = secure_TP
-            print("[^Tp^]")
-            return f"new sl: {slTriggerPx}"
-
-        else: 
-            return "[^No changes^]"
-
-    else: # Long side checking
-        if last_px <= safe_level:
-            slTriggerPx = secure_TP
-            print("[<Tp>]")
-            return f"new sl: {slTriggerPx}"
+        mxTP_scTP = ((Max_tp - secure_TP)*40)/100
+        safe_level_float = Max_tp - mxTP_scTP
+        safe_level = "{:.2f}".format(safe_level_float)
 
 
-        else: 
-            return "[<No changes>]"        
+        posSide = algo_order["posSide"]
+        # compare is the market price is in safe level for trailing the stop loss
+        if posSide == "long": # Long side checking
+
+            margin = ((last_px - safe_level_float)/last_px) * 100
+            margin = "{:.2f}".format(margin)
+
+            if last_px >= safe_level_float:
+                slTriggerPx = secure_TP
+                output_dict["slTriggerPx"] = slTriggerPx
+                msg = ""      
+            else: 
+                msg = "No changes"      
+
+
+        else: # Short side checking
+
+            margin = (((last_px - safe_level_float)/last_px) * -100) # -100 is for make understand able percent value is short mode
+            margin = "{:.2f}".format(margin)            
+            if last_px <= safe_level_float:
+                slTriggerPx = secure_TP
+                output_dict["slTriggerPx"] = slTriggerPx
+                msg = ""       
+            else: 
+                msg = "No changes"      
+
+        output_dict["Safe-level"] = safe_level
+        output_dict["Safelvl-margin"] = margin
+        output_dict["msg"] = msg
+
+
+    except ValueError:
+        output_dict["msg"] = "Order tag is empty"
+
+    return output_dict
+
 
 def Place_new_stopLoss(New_slTriggerPx,algo_order,): # Place new algo order for trail a stoploss and cancel old stoploss
     place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="buy", posSide="short", ordType="conditional", sz=algo_order["sz"], slTriggerPx=New_slTriggerPx, slOrdPx = "-1", tag=algo_order["tag"])
@@ -77,22 +91,27 @@ def Place_new_stopLoss(New_slTriggerPx,algo_order,): # Place new algo order for 
  
 while True:
     start = timer()
-
+    main_json = dict()
     ticker_px = float(Get_ticker_price(instrument))
     algo_order_list = Get_algo_order_list()
-    for algo_ord_itm in algo_order_list:
-        print(f"ticker px :{ticker_px}")
-        print(f'posSide: {algo_ord_itm["posSide"]}')
-        print(f'algoId: {algo_ord_itm["algoId"]}')
-        print(f'slTriggerPx: {algo_ord_itm["slTriggerPx"]}')
 
-        trail_calc = Trailing_calc(algo_ord_itm,ticker_px)
-        print(trail_calc)
-        print("\n \n")
-    
+    if type(algo_order_list) is list: 
+
+        for algo_ord_itm in algo_order_list:
+            trail_calc = Trailing_calc(algo_ord_itm,ticker_px)
+            main_json["ticker_px"] = ticker_px
+            main_json["posSide"] = algo_ord_itm["posSide"]
+            main_json["algoId"] = algo_ord_itm["algoId"]
+            main_json["tag"] = algo_ord_itm["tag"]
+            main_json["O-slTriggerPx"] = algo_ord_itm["slTriggerPx"]
+            main_json["trail_result"] = trail_calc
+            print(main_json)
+    else:
+        print(algo_order_list)
+
+
     end = timer()
     print(timedelta(seconds=end-start))
     time.sleep(1)
-    print("\n \n")
-
+    print("\n")
 
