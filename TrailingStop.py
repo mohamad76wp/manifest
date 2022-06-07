@@ -8,6 +8,22 @@ import secrets
 
 from timeit import default_timer as timer
 from datetime import timedelta
+from datetime import datetime
+date = datetime.now().strftime("%Y_%m_%d-%I:%M_%p")
+
+import csv
+
+csv_columns = ['ticker_px','posSide','algoId','tag','O-slTriggerPx','trail_result']
+csv_file = f"logging-{date}.csv"
+csv_file = "logging.csv"
+print(csv_file)
+try:
+    with open(csv_file, 'a') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+        writer.writeheader()
+except Exception as e:
+    print(e)
+
 
 api = secrets.api()
 secret = secrets.secret()
@@ -20,8 +36,10 @@ tradeAPI = Trade.TradeAPI(api, secret, password, False, flag)
 marketAPI = Market.MarketAPI(api, secret, password, False, flag)
 
 def Get_ticker_price(instrument): # Get last price form order book
-    get_market_price = marketAPI.get_ticker(instrument)
-    last_px = get_market_price["data"][0]["last"]
+    # get_market_price = marketAPI.get_ticker(instrument)
+    # last_px = get_market_price["data"][0]["last"]
+    get_market_price = marketAPI.get_orderbook(instrument)
+    last_px = get_market_price["data"][0]["asks"][0][0]
 
     return last_px
 
@@ -34,6 +52,40 @@ def Get_algo_order_list(): # Returns a list of pending algo orders
     else: 
         return get_algo_pending
 
+
+def tagMaker(Secure_TP,Max_tp):
+    if len(Secure_TP) == 7:
+        Secure_TP = f"{Secure_TP}0" 
+    elif len(Secure_TP) < 7:
+        Secure_TP = f"{Secure_TP}.00"
+    scTP = Secure_TP.replace(".","x")
+
+
+    if len(Max_tp) == 7:
+        Max_tp = f"{Max_tp}0"
+    elif len(Max_tp) < 7:
+        Max_tp = f"{Max_tp}.00" 
+    mTP = Max_tp.replace(".","x")
+
+    tag = f"{scTP}{mTP}"
+    return tag
+
+def nMaxTP_Maker(tag):
+
+    Secure_TP = float(tag[:8].replace("x","."))
+    Max_tp = float(tag[8:].replace("x","."))
+
+    diff = Max_tp - Secure_TP
+    diff = float("{:.2f}".format(diff))
+    print(3,diff)
+    if diff != 0:
+        new_mxTp = Max_tp + diff
+        Secure_TP = Max_tp
+        Max_tp = new_mxTp 
+        tag = tagMaker(str(Secure_TP),str(Max_tp))
+    else:
+        tag = "noMoreMXtp"
+    return tag
 
 def Trailing_calc(algo_order,last_px):
     
@@ -56,7 +108,10 @@ def Trailing_calc(algo_order,last_px):
 
             if last_px >= safe_level_float:
                 slTriggerPx = secure_TP
+                p_n_s = Place_new_stopLoss(slTriggerPx,algo_order)
+
                 output_dict["slTriggerPx"] = slTriggerPx
+                output_dict["p_n_s"]= p_n_s
                 msg = ""      
             else: 
                 msg = "No changes"      
@@ -68,13 +123,17 @@ def Trailing_calc(algo_order,last_px):
             margin = "{:.2f}".format(margin)            
             if last_px <= safe_level_float:
                 slTriggerPx = secure_TP
+                p_n_s = Place_new_stopLoss(slTriggerPx,algo_order)
+
                 output_dict["slTriggerPx"] = slTriggerPx
+                output_dict["p_n_s"]= p_n_s
                 msg = ""       
             else: 
                 msg = "No changes"      
 
         output_dict["Safe-level"] = safe_level
         output_dict["Safelvl-margin"] = margin
+
         output_dict["msg"] = msg
 
 
@@ -83,12 +142,31 @@ def Trailing_calc(algo_order,last_px):
 
     return output_dict
 
+def Place_new_stopLoss(New_slTriggerPx,algo_order): # Place new algo order for trail a stoploss and cancel old stoploss
+    if algo_order["posSide"] == "long":
+       posSide = "long" 
+       side = "sell"
+    else:
+       posSide = "short" 
+       side = "buy"
 
-def Place_new_stopLoss(New_slTriggerPx,algo_order,): # Place new algo order for trail a stoploss and cancel old stoploss
-    place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side="buy", posSide="short", ordType="conditional", sz=algo_order["sz"], slTriggerPx=New_slTriggerPx, slOrdPx = "-1", tag=algo_order["tag"])
+
+    # tag = nMaxTP_Maker(algo_order["tag"])
+    tag = "noMoreMXtp"
+
     cancel_algo_order = tradeAPI.cancel_algo_order([{"instId":instrument, 'algoId': algo_order["algoId"]}])
-    return {"place_algo_order":place_algo_order,"cancel_algo_order":cancel_algo_order}
- 
+    place_algo_order = tradeAPI.place_algo_order(instId=instrument, tdMode="isolated", side=side, posSide=posSide, ordType="conditional", sz=algo_order["sz"], slTriggerPx=New_slTriggerPx, slOrdPx = "-1", tag=tag)
+    res_dict = dict()
+
+    res_dict["side,posSide"]=[side,posSide]
+    res_dict["New_slTriggerPx"]=New_slTriggerPx
+
+    res_dict["place_algo_order"]=place_algo_order
+    res_dict["cancel_algo_order"]=cancel_algo_order
+
+    return res_dict
+
+
 while True:
     start = timer()
     main_json = dict()
@@ -101,17 +179,29 @@ while True:
             trail_calc = Trailing_calc(algo_ord_itm,ticker_px)
             main_json["ticker_px"] = ticker_px
             main_json["posSide"] = algo_ord_itm["posSide"]
-            main_json["algoId"] = algo_ord_itm["algoId"]
+            main_json["algoId"] = f'[{algo_ord_itm["algoId"]}]'
             main_json["tag"] = algo_ord_itm["tag"]
             main_json["O-slTriggerPx"] = algo_ord_itm["slTriggerPx"]
             main_json["trail_result"] = trail_calc
+
             print(main_json)
+
+            dict_data = main_json
+
+            try:
+                with open(csv_file, 'a') as csvfile:
+                    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+                    writer.writerow(dict_data)
+            except Exception as e:
+                print(e)
+
     else:
         print(algo_order_list)
 
 
     end = timer()
     print(timedelta(seconds=end-start))
-    time.sleep(1)
+    time.sleep(2)
     print("\n")
+
 
